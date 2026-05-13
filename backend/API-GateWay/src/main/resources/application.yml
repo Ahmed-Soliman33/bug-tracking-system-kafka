@@ -1,7 +1,6 @@
 server:
-  port:9080
+  port: 9080
 
-# lb --> load balancing
 spring:
   application:
     name: API-GATEWAY
@@ -11,14 +10,14 @@ spring:
         locator:
           enabled: true
       routes:
-        - id: USER-SERVICE
+        - id: USER-AUTH-SERVICE
           predicates:
-            - Path=/users/**
+            - Path=/users/accounts/**
           uri: lb://USER-SERVICE
 
         - id: USER-SERVICE
           predicates:
-            - Path=/users/accounts/**
+            - Path=/users/**
           uri: lb://USER-SERVICE
 
         - id: BUG-SERVICE
@@ -35,19 +34,19 @@ spring:
           predicates:
             - Path=/notifications/**
           uri: lb://NOTIFICATION-SERVICE
-# to connect with React.js frontend
-    globalcors:
-      corsConfigurations:
-        '[/**]':
-          allowedOrigins:
-            - "http://localhost:3000"
-          allowedMethods:
-            - GET
-            - POST
-            - PUT
-            - DELETE
-            - PATCH
-          allowedHeaders: "*"
+
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+            allowedHeaders: "*"
 
 eureka:
   client:

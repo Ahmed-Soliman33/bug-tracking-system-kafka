@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService{
             Staff staff = new Staff();
             copyData(user, staff);
             // create job additional feature
-            staff.setJob(staff.getJob());
+            if (user instanceof Staff) staff.setJob(((Staff) user).getJob());
             return userRepository.save(staff);
         }
 
@@ -97,7 +97,7 @@ public class UserServiceImpl implements UserService{
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchUserExistsException("User Not Found"));
 
-        PasswordEncoder passwordEncoder = null;
+        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new InvalidDataException("Invalid password");

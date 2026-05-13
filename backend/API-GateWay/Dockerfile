@@ -12,7 +12,7 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY --from=build /build/target/API-GateWay-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/API-GateWay-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 9080
 
