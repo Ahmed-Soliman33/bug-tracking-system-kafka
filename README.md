@@ -1,203 +1,252 @@
-# Bug Tracker — Backend
+# Bug Tracking System — Kafka Edition
 
-A microservices-based bug tracking system built with Java 21 and Spring Boot. Customers report bugs, admins manage and assign them to staff, and everyone gets notified along the way.
+A microservices bug tracking system. Customers report bugs, admins assign them to staff, and all parties receive real-time notifications powered by Apache Kafka.
 
 ---
 
 ## Architecture
 
 ```
-Client (React :3000)
-        │
-        ▼
-  API Gateway :8080
-        │
-  ┌─────┼──────────────────┐
-  ▼     ▼                  ▼
-User  Bug-Service    Project-Service
-Auth  :8082          :8083
-:8081    │
-         ├──► Project-Service (verify project exists)
-         └──► Notification-Service :8084
+React :3000
+    │
+    ▼
+API Gateway :9080
+    │
+    ├──► User-Auth-Service :9081  →  user_db
+    ├──► Bug-Service :9082        →  bug_db
+    │       ├─ OpenFeign ──────►  Project-Service :9083
+    │       └─ Kafka publish ──►  Notification-Service :9084
+    ├──► Project-Service :9083   →  project_db
+    └──► Notification-Service :9084 → notification_db
 
-All services register with:
-  Discovery-Service (Eureka) :8761
-All services share:
-  MySQL 8 :3306  (4 separate databases)
+All services register via:
+  Discovery-Service (Eureka) :9761
+
+Message broker:
+  Kafka :9092  (managed by Zookeeper :2181)
+  Kafka UI :9085
 ```
 
-| Service | Port | Database |
-|---|---|---|
-| API Gateway | 8080 | — |
-| User-Auth-Service | 8081 | `user_service` |
-| Bug-Service | 8082 | `bug_service` |
-| Project-Service | 8083 | `project_service` |
-| Notification-Service | 8084 | `notification_service` |
-| Discovery-Service (Eureka) | 8761 | — |
+### Kafka Event Topics
+
+| Topic | Published by | Consumed by | Notifies |
+|---|---|---|---|
+| `bug-created-topic` | Bug-Service | Notification-Service | Admin |
+| `bug-assigned-topic` | Bug-Service | Notification-Service | Staff |
+| `bug-solved-topic` | Bug-Service | Notification-Service | Customer |
+| `bug-comment-topic` | Bug-Service | Notification-Service | Admin |
+| `admin-message-topic` | Bug-Service | Notification-Service | Customer |
+| `User-registered-event` | User-Auth-Service | Notification-Service | Admin |
 
 ---
 
-## Tech Stack
+## Prerequisites
 
-- **Java 21** + **Spring Boot 3.x**
-- **Spring Cloud Gateway** — API gateway & routing
-- **Netflix Eureka** — service discovery
-- **OpenFeign** — inter-service REST calls
-- **Spring Data JPA / Hibernate** — ORM
-- **MySQL 8** — persistence
-- **Spring Security + BCrypt** — password hashing
-- **Docker & Docker Compose** — containerization
-- **Maven** — build tool (runs inside Docker — no local Maven needed)
+| Tool | macOS | Windows |
+|---|---|---|
+| **Docker Desktop** | [download](https://www.docker.com/products/docker-desktop/) | [download](https://www.docker.com/products/docker-desktop/) |
+| **Node.js 18+** | `brew install node` | [download](https://nodejs.org/) |
+| Git | pre-installed | [download](https://git-scm.com/) |
+
+No Java, Maven, or Kafka installation needed — everything runs inside Docker.
+
+> **Windows users:** Use **PowerShell** or **Git Bash** for all commands below. Do not use CMD — it does not support the multi-line `curl` syntax used here.
 
 ---
 
 ## Running the Project
 
-### Prerequisites
+### Step 1 — Start the backend
 
-**Docker Desktop** — nothing else required.
-
-### Start
-
+**macOS / Linux:**
 ```bash
-cd " backend"
+cd backend
 docker-compose up --build
 ```
 
-First build takes ~8 minutes (downloads Maven dependencies inside Docker). Every subsequent start takes ~1 minute.
-
-### Verify everything is up
-
-1. Open **http://localhost:8761** — Eureka dashboard
-2. Wait until all 5 services appear: `USER-SERVICE`, `BUG-SERVICE`, `PROJECT-SERVICE`, `NOTIFICATION-SERVICE`, `API-GATEWAY`
-3. Smoke test:
-```bash
-curl http://localhost:8080/projects
+**Windows (PowerShell):**
+```powershell
+cd backend
+docker-compose up --build
 ```
 
-### Stop
+First build downloads all Maven dependencies and Docker images — allow **8–10 minutes**. Every subsequent start takes about **1 minute** (images are cached).
 
-```bash
-docker-compose down        # keeps the database
-docker-compose down -v     # wipes the database too
+> Do not close the terminal. Keep it running to see live logs from all services.
+
+### Step 2 — Verify the backend is ready
+
+Open **http://localhost:9761** in your browser — this is the Eureka dashboard.
+
+Wait until all 5 of these names appear in the "Instances currently registered" section:
+
+```
+API-GATEWAY
+USER-SERVICE
+BUG-SERVICE
+PROJECT-SERVICE
+NOTIFICATION-SERVICE
 ```
 
-### Rebuild a single service after code changes
+This takes about 60–90 seconds after the containers start. Do not proceed to Step 3 until all 5 are registered.
+
+### Step 3 — Start the frontend
+
+Open a **second terminal** window:
+
+**macOS / Linux:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Windows (PowerShell):**
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Then open **http://localhost:3000** in your browser.
+
+---
+
+## Stopping the Project
 
 ```bash
-docker-compose up --build user-auth-service
+# Stop everything, keep the database data
+docker-compose down
+
+# Stop everything AND wipe all data (clean slate)
+docker-compose down -v
 ```
 
 ---
 
-## Authentication Model
+## Rebuilding a Single Service
 
-There is **no JWT**. After login, store `data.id` and `data.role` from the response and send them as plain HTTP headers on every subsequent request:
+After changing backend code, rebuild only the affected service instead of everything:
 
+```bash
+docker-compose up --build bug-service
 ```
-userId: 4
-role: ADMIN
-```
 
-Roles: `ADMIN` `STAFF` `CUSTOMER`
+Replace `bug-service` with any of: `user-auth-service`, `project-service`, `notification-service`, `api-gateway`, `discovery-service`.
 
 ---
 
-## Full Flow — curl One-Liners
+## Verifying the Full Flow (curl)
 
-All commands are single lines, safe to paste directly into your terminal.
+These commands confirm the entire system works end-to-end including Kafka notifications.
+
+> **Windows users:** The multi-line `\` syntax works in PowerShell. In Git Bash, use the same commands as macOS.
 
 ### 1. Register users
 
 ```bash
-# Register ADMIN (id → 4)
-curl -s -X POST http://localhost:8080/users/accounts/register -H "Content-Type: application/json" -d '{"fullName":"Ahmed Admin","phoneNumber":"01012345678","age":30,"email":"ahmed.admin@bugtracker.com","password":"admin1234","role":"ADMIN"}'
+# Admin
+curl -s -X POST http://localhost:9080/users/accounts/register \
+  -H "Content-Type: application/json" \
+  -d "{\"fullName\":\"Ahmed Admin\",\"phoneNumber\":\"01012345678\",\"age\":30,\"email\":\"admin@test.com\",\"password\":\"admin1234\",\"role\":\"ADMIN\"}"
 
-# Register STAFF (id → 5)
-curl -s -X POST http://localhost:8080/users/accounts/register -H "Content-Type: application/json" -d '{"fullName":"Sara Staff","phoneNumber":"01098765432","age":26,"email":"sara.staff@bugtracker.com","password":"staff1234","role":"STAFF","job":"BACKEND"}'
+# Staff
+curl -s -X POST http://localhost:9080/users/accounts/register \
+  -H "Content-Type: application/json" \
+  -d "{\"fullName\":\"Sara Staff\",\"phoneNumber\":\"01098765432\",\"age\":26,\"email\":\"staff@test.com\",\"password\":\"staff1234\",\"role\":\"STAFF\",\"job\":\"BACKEND\"}"
 
-# Register CUSTOMER (id → 6)
-curl -s -X POST http://localhost:8080/users/accounts/register -H "Content-Type: application/json" -d '{"fullName":"Omar Customer","phoneNumber":"01011112233","age":24,"email":"omar.customer@bugtracker.com","password":"customer1234","role":"CUSTOMER"}'
+# Customer
+curl -s -X POST http://localhost:9080/users/accounts/register \
+  -H "Content-Type: application/json" \
+  -d "{\"fullName\":\"Omar Customer\",\"phoneNumber\":\"01011112233\",\"age\":24,\"email\":\"customer@test.com\",\"password\":\"customer1234\",\"role\":\"CUSTOMER\"}"
 ```
+
+Save the `id` from each response — you will need them as `ADMIN_ID`, `STAFF_ID`, `CUSTOMER_ID` in the steps below.
 
 ### 2. Login
 
 ```bash
-# Login as ADMIN
-curl -s -X POST http://localhost:8080/users/accounts/login -H "Content-Type: application/json" -d '{"email":"ahmed.admin@bugtracker.com","password":"admin1234"}'
-
-# Login as STAFF
-curl -s -X POST http://localhost:8080/users/accounts/login -H "Content-Type: application/json" -d '{"email":"sara.staff@bugtracker.com","password":"staff1234"}'
-
-# Login as CUSTOMER
-curl -s -X POST http://localhost:8080/users/accounts/login -H "Content-Type: application/json" -d '{"email":"omar.customer@bugtracker.com","password":"customer1234"}'
+curl -s -X POST http://localhost:9080/users/accounts/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"admin@test.com\",\"password\":\"admin1234\"}"
 ```
 
-### 3. Create a project (ADMIN)
+### 3. Create a project (Admin)
 
 ```bash
-curl -s -X POST http://localhost:8080/projects/insert -H "Content-Type: application/json" -H "role: ADMIN" -d '{"projectName":"E-Commerce App","description":"Online shopping platform","adminId":4}'
+curl -s -X POST http://localhost:9080/projects/insert \
+  -H "Content-Type: application/json" \
+  -H "role: ADMIN" \
+  -d "{\"projectName\":\"My Project\",\"description\":\"A test project\",\"adminId\":ADMIN_ID}"
 ```
 
-### 4. Create a bug (CUSTOMER)
+### 4. Report a bug (Customer)
 
 ```bash
-curl -s -X POST http://localhost:8080/bugs/insert -H "Content-Type: application/json" -H "userId: 6" -d '{"title":"Checkout button unresponsive","description":"Clicking checkout does nothing on mobile","priority":"HIGH","projectName":"E-Commerce App"}'
+curl -s -X POST http://localhost:9080/bugs/insert \
+  -H "Content-Type: application/json" \
+  -H "userId: CUSTOMER_ID" \
+  -d "{\"title\":\"Login page crashes\",\"description\":\"500 error on submit\",\"priority\":\"HIGH\",\"projectName\":\"My Project\"}"
 ```
 
-→ Admin (id 4) automatically receives an `UNREAD` notification.
+→ Kafka fires `bug-created-topic` → Admin receives an UNREAD notification.
 
-### 5. Check notifications (ADMIN)
+### 5. Check admin notifications
 
 ```bash
-curl -s http://localhost:8080/notifications/my-notifications -H "userId: 4"
+curl -s http://localhost:9080/notifications/my-notifications -H "userId: ADMIN_ID"
 ```
 
-### 6. Assign bug to staff (ADMIN)
+### 6. Assign bug to staff (Admin)
 
 ```bash
-curl -s -X PUT http://localhost:8080/bugs/assign -H "Content-Type: application/json" -H "userId: 4" -d '{"bugId":2,"staffId":5}'
+curl -s -X PUT http://localhost:9080/bugs/assign \
+  -H "Content-Type: application/json" \
+  -H "userId: ADMIN_ID" \
+  -d "{\"bugId\":1,\"staffId\":STAFF_ID}"
 ```
 
-→ Staff (id 5) automatically receives an `UNREAD` notification.
+→ Kafka fires `bug-assigned-topic` → Staff receives an UNREAD notification.
 
-### 7. Staff comment on bug
+### 7. Solve bug (Staff)
 
 ```bash
-curl -s -X POST http://localhost:8080/bugs/comment -H "Content-Type: application/json" -H "userId: 5" -d '{"bugId":2,"adminId":4,"comment":"Reproduced on Safari iOS. Investigating event listener issue."}'
+curl -s -X PUT http://localhost:9080/bugs/solve \
+  -H "Content-Type: application/json" \
+  -H "userId: STAFF_ID" \
+  -d "{\"bugId\":1,\"customerId\":CUSTOMER_ID}"
 ```
 
-### 8. Admin message to customer
+→ Kafka fires `bug-solved-topic` → Customer receives an UNREAD notification.
+
+### 8. Check customer notifications
 
 ```bash
-curl -s -X POST http://localhost:8080/bugs/admin-message -H "Content-Type: application/json" -H "userId: 4" -d '{"bugId":2,"customerId":6,"message":"Our team is actively working on your issue."}'
+curl -s http://localhost:9080/notifications/my-notifications -H "userId: CUSTOMER_ID"
 ```
 
-### 9. Solve bug (STAFF)
+---
 
-```bash
-curl -s -X PUT http://localhost:8080/bugs/solve -H "Content-Type: application/json" -H "userId: 5" -d '{"bugId":2,"customerId":6}'
+## Monitoring Tools
+
+| Tool | URL | Purpose |
+|---|---|---|
+| Frontend | http://localhost:3000 | Main UI |
+| Eureka Dashboard | http://localhost:9761 | Check all services are registered |
+| Kafka UI | http://localhost:9085 | Inspect Kafka topics and messages |
+
+---
+
+## Auth Model
+
+There is no JWT. After login, the frontend stores `data.id` and `data.role` and sends them as plain headers on every request:
+
+```
+userId: 1
+role: ADMIN
 ```
 
-→ Customer (id 6) automatically receives an `UNREAD` notification.
-
-### 10. Check customer notifications
-
-```bash
-curl -s http://localhost:8080/notifications/my-notifications -H "userId: 6"
-```
-
-### 11. Mark notification as read
-
-```bash
-curl -s -X PUT http://localhost:8080/notifications/read/4
-```
-
-### 12. Update bug status
-
-```bash
-curl -s -X PUT http://localhost:8080/bugs/2 -H "Content-Type: application/json" -H "userId: 4" -H "role: ADMIN" -d '{"title":"Checkout button unresponsive","description":"Fixed in v2.1","priority":"HIGH","status":"CLOSED"}'
-```
+Roles: `ADMIN` `STAFF` `CUSTOMER`
 
 ---
 
@@ -210,12 +259,70 @@ OPEN → ASSIGNED → IN_PROGRESS → FIXED → CLOSED
 
 ---
 
-## Automatic Notifications Summary
+## Troubleshooting
 
-| Trigger | Sender | Receiver | Message |
-|---|---|---|---|
-| Bug created | customer | project admin | `"New bug created"` |
-| Bug assigned | admin | staff | `"This bug has been assigned to you"` |
-| Bug solved | staff | customer | `"Bug has been solved"` |
-| Staff comment | staff | admin | the comment text |
-| Admin message | admin | customer | the message text |
+### Services show as "Exited" immediately after starting
+
+MySQL databases were not created. Run:
+
+```bash
+docker exec bugtrackerKafka-mysql mysql -uroot -p1234 -e "
+CREATE DATABASE IF NOT EXISTS user_db;
+CREATE DATABASE IF NOT EXISTS bug_db;
+CREATE DATABASE IF NOT EXISTS project_db;
+CREATE DATABASE IF NOT EXISTS notification_db;
+"
+```
+
+Then restart the failed services:
+
+```bash
+docker-compose start user-auth-service bug-service project-service notification-service
+```
+
+This only happens if the MySQL volume existed from a previous run before `init-db.sql` was added. A fresh `docker-compose down -v && docker-compose up --build` avoids it entirely.
+
+---
+
+### Kafka crashes with `KeeperErrorCode = NodeExists`
+
+Stale Zookeeper data from a previous run. Do a full clean restart:
+
+```bash
+docker-compose down -v
+docker-compose up --build
+```
+
+---
+
+### Frontend shows "Provisional headers are shown" / no response
+
+The API Gateway is not reachable. Check:
+
+1. Is the gateway container running? `docker ps | grep api-gateway`
+2. Is Eureka healthy? Open http://localhost:9761
+3. Did the gateway start on the correct port? Check logs: `docker logs api-gateway-kafka`
+
+---
+
+### `503 Service Unavailable` for a few seconds after startup
+
+Normal. The Eureka registry takes 30–60 seconds to propagate to the Gateway's load balancer cache after a service registers. Wait and retry.
+
+---
+
+### Windows-specific: `docker-compose` not found
+
+On newer Docker Desktop for Windows, the command is `docker compose` (no hyphen):
+
+```powershell
+docker compose up --build
+```
+
+---
+
+## Tech Stack
+
+**Backend:** Java 21, Spring Boot 3.x, Spring Cloud Gateway, Netflix Eureka, OpenFeign, Spring Data JPA, Hibernate, Spring Kafka, MySQL 8, BCrypt, Docker, Maven
+
+**Frontend:** React 19, Vite, Tailwind CSS v4, React Router v7, TanStack Query v5, Zustand v5, Framer Motion, shadcn/ui, React Hook Form + Zod, Sonner
