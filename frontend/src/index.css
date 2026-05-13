@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  /* Brand */
+  --brand-navy: #000093;
+  --brand-teal: #01ab77;
+  --brand-teal-light: #00cec9;
+
+  /* All tokens as hsl() so @theme inline picks them up as real colors */
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222 47% 10%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222 47% 10%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222 47% 10%);
+  --primary: hsl(235 100% 29%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(163 98% 34%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(220 14% 96%);
+  --muted-foreground: hsl(220 9% 46%);
+  --accent: hsl(220 14% 93%);
+  --accent-foreground: hsl(222 47% 10%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(220 13% 91%);
+  --input: hsl(220 13% 91%);
+  --ring: hsl(235 100% 29%);
+
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(222 47% 10%);
+  --sidebar-primary: hsl(235 100% 29%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(220 14% 93%);
+  --sidebar-accent-foreground: hsl(222 47% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(235 100% 29%);
+}
+
+.dark {
+  --background: hsl(222 47% 5%);
+  --foreground: hsl(210 40% 98%);
+  --card: hsl(222 47% 7%);
+  --card-foreground: hsl(210 40% 98%);
+  --popover: hsl(222 47% 7%);
+  --popover-foreground: hsl(210 40% 98%);
+  --primary: hsl(163 98% 34%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(217 33% 18%);
+  --secondary-foreground: hsl(210 40% 98%);
+  --muted: hsl(217 33% 18%);
+  --muted-foreground: hsl(215 20% 65%);
+  --accent: hsl(217 33% 18%);
+  --accent-foreground: hsl(210 40% 98%);
+  --destructive: hsl(0 63% 31%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(217 33% 18%);
+  --input: hsl(217 33% 18%);
+  --ring: hsl(163 98% 34%);
+
+  --sidebar: hsl(222 47% 7%);
+  --sidebar-foreground: hsl(210 40% 98%);
+  --sidebar-primary: hsl(163 98% 34%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(217 33% 14%);
+  --sidebar-accent-foreground: hsl(210 40% 98%);
+  --sidebar-border: hsl(217 33% 18%);
+  --sidebar-ring: hsl(163 98% 34%);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--border);
+}
+
+::selection {
+  background: #00b89430;
+  color: #0d1b4b;
+}
+
+button {
+  cursor: pointer;
+}

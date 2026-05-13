@@ -1,0 +1,110 @@
+# this is the file that configure docker compose
+# this run all containers in single yml file
+
+version: '3.8'
+
+services:
+
+  mysql:
+    image: mysql:8
+    container_name: bugtrackerKafka-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD","mysqladmin","ping","-h","localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+# container to use kafkaUI to show the events
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    ports:
+      - "9085:9080"
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
+  discovery-service:
+    build: ./discovery-service
+    container_name: discovery-service-kafka
+    ports:
+      - "9761:9761"
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway-kafka
+    ports:
+      - "9080:9080"
+    depends_on:
+      - discovery-service
+
+  user-auth-service:
+    build: ./user-auth-service
+    container_name: user-auth-service-kafka
+    ports:
+      - "9081:9081"
+    depends_on:
+      - mysql
+      - kafka
+      - discovery-service
+
+  bug-service:
+    build: ./bug-service
+    container_name: bug-service-kafka
+    ports:
+      - "9082:9082"
+    depends_on:
+      - mysql
+      - kafka
+      - discovery-service
+
+  project-service:
+    build: ./project-service
+    container_name: project-service-kafka
+    ports:
+      - "9083:9083"
+    depends_on:
+      - mysql
+      - discovery-service
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service-kafka
+    ports:
+      - "9084:9084"
+    depends_on:
+      - mysql
+      - kafka
+      - discovery-service
+
+volumes:
+  mysql_data:
+

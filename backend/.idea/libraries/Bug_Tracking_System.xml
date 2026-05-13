@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="Bug-Tracking-System">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/Notification Service.zip!/" />
+      <root url="jar://$PROJECT_DIR$/Bug Service.zip!/" />
+      <root url="jar://$PROJECT_DIR$/Discovery Service.zip!/" />
+      <root url="jar://$PROJECT_DIR$/Project Service.zip!/" />
+      <root url="jar://$PROJECT_DIR$/User-Auth Service.zip!/" />
+      <root url="jar://$PROJECT_DIR$/API GateWay.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

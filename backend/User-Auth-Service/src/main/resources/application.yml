@@ -1,0 +1,3 @@
+# Intentionally empty.
+# All Kafka configuration is in application.properties which uses kafka:9092 (Docker hostname).
+# This file previously overrode bootstrap-servers to localhost:9092, breaking Kafka inside Docker.

@@ -1,0 +1,57 @@
+server:
+  port:9080
+
+# lb --> load balancing
+spring:
+  application:
+    name: API-GATEWAY
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: USER-SERVICE
+          predicates:
+            - Path=/users/**
+          uri: lb://USER-SERVICE
+
+        - id: USER-SERVICE
+          predicates:
+            - Path=/users/accounts/**
+          uri: lb://USER-SERVICE
+
+        - id: BUG-SERVICE
+          predicates:
+            - Path=/bugs/**
+          uri: lb://BUG-SERVICE
+
+        - id: PROJECT-SERVICE
+          predicates:
+            - Path=/projects/**
+          uri: lb://PROJECT-SERVICE
+
+        - id: NOTIFICATION-SERVICE
+          predicates:
+            - Path=/notifications/**
+          uri: lb://NOTIFICATION-SERVICE
+# to connect with React.js frontend
+    globalcors:
+      corsConfigurations:
+        '[/**]':
+          allowedOrigins:
+            - "http://localhost:3000"
+          allowedMethods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - PATCH
+          allowedHeaders: "*"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-service:9761/eureka/
+  instance:
+    prefer-ip-address: true
